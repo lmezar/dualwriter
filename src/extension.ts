@@ -45,13 +45,16 @@ function activate(context: vscode.ExtensionContext) {
 async function syncFiles(filePath: string, sourcePath: string, targetPath: string) {
     try {
         const relativePath = path.relative(sourcePath, filePath);
-        const sourceFilePath = path.join(sourcePath, relativePath);
-        const targetFilePath = path.join(targetPath, relativePath);
 
-        await fsExtra.ensureDir(path.dirname(targetFilePath));
-        await fsExtra.copyFile(sourceFilePath, targetFilePath);
+		if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+			const sourceFilePath = path.join(sourcePath, relativePath);
+			const targetFilePath = path.join(targetPath, relativePath);
 
-        vscode.window.setStatusBarMessage('Archivos sincronizados correctamente.', 5000);
+			await fsExtra.ensureDir(path.dirname(targetFilePath));
+			await fsExtra.copyFile(sourceFilePath, targetFilePath);
+
+			vscode.window.setStatusBarMessage('Archivos sincronizados correctamente.', 5000);
+		}
     } catch (error) {
         const errorMessage = (error as Error).message ?? 'Se produjo un error sin mensaje detallado.';
         vscode.window.showErrorMessage(`Error al sincronizar archivos: ${errorMessage}`);
