@@ -1,0 +1,77 @@
+{
+  "name": "dualwriter",
+  "displayName": "DualWriter",
+  "description": "Extension that allows you to modify two identical directories at the same time.",
+  "version": "1.0.0",
+  "publisher": "Luis Meza",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dualwriter.syncFiles",
+        "title": "Sync Files"
+      }
+    ],
+    "configuration": {
+      "title": "Save",
+      "properties": {
+        "dualwriter.enableAutoSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automatic sync when saving files."
+        },
+        "dualwriter.mainDirectory": {
+          "type": "string",
+          "default": "./",
+          "description": "Source directory where the user is going to edit the document."
+        },
+        "dualwriter.secondaryDirectory": {
+          "type": "string",
+          "default": "./",
+          "description": "Secondary directory where the extension will update files."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "dualwriter.syncFiles",
+        "key": "ctrl+alt+f",
+        "mac": "cmd+alt+f",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "fs-extra": "^11.2.0"
+  }
+}
