@@ -5,6 +5,10 @@
   "version": "1.0.0",
   "publisher": "Luis Meza",
   "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lmezar/dualwriter.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
