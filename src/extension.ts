@@ -1,9 +1,12 @@
-"use strict";
 import * as vscode from 'vscode';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
+import simpleGit, { SimpleGit } from 'simple-git';
+import * as fs from 'fs';
 
 const extName = 'dualwriter';
+
+let currentBranch: string | undefined;
 
 function activate(context: vscode.ExtensionContext) {
     const configuration = vscode.workspace.getConfiguration(extName);
@@ -37,6 +40,17 @@ function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+        const rootPath = workspaceFolders[0].uri.fsPath; // Assuming single-rooted workspace
+
+        fs.watch(rootPath, (event, filename) => {
+            if (event === 'change' && filename === '.git') {
+                checkGitRepository(rootPath);
+            }
+        });
+    }
+
     context.subscriptions.push(syncFilesOnCommand);
     context.subscriptions.push(listenerConfiguration);
     context.subscriptions.push(syncFilesOnSave);
@@ -46,20 +60,36 @@ async function syncFiles(filePath: string, sourcePath: string, targetPath: strin
     try {
         const relativePath = path.relative(sourcePath, filePath);
 
-		if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
-			const sourceFilePath = path.join(sourcePath, relativePath);
-			const targetFilePath = path.join(targetPath, relativePath);
+        if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+            const sourceFilePath = path.join(sourcePath, relativePath);
+            const targetFilePath = path.join(targetPath, relativePath);
 
-			await fsExtra.ensureDir(path.dirname(targetFilePath));
-			await fsExtra.copyFile(sourceFilePath, targetFilePath);
+            await fsExtra.ensureDir(path.dirname(targetFilePath));
+            await fsExtra.copyFile(sourceFilePath, targetFilePath);
 
-			vscode.window.setStatusBarMessage('Archivos sincronizados correctamente.', 5000);
-		}
+            vscode.window.setStatusBarMessage('Archivos sincronizados correctamente.', 5000);
+        }
     } catch (error) {
         const errorMessage = (error as Error).message ?? 'Se produjo un error sin mensaje detallado.';
         vscode.window.showErrorMessage(`Error al sincronizar archivos: ${errorMessage}`);
     }
 }
+
+async function checkGitRepository(rootPath: string) {
+    const git: SimpleGit = simpleGit(rootPath);
+    try {
+        const branchSummary = await git.branch();
+        const newBranch = branchSummary.current;
+
+        if (newBranch && newBranch !== currentBranch) {
+            currentBranch = newBranch;
+            vscode.window.showInformationMessage(`Cambiaste a la rama: ${currentBranch}`);
+        }
+    } catch (error) {
+        vscode.window.showWarningMessage('No se pudo obtener información de la rama actual.');
+    }
+}
+
 
 function deactivate() {
     // Este método se llama cuando la extensión se desactiva.
