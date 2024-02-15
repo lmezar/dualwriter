@@ -31,4 +31,4 @@ Before using it, make sure you set it up! No hot-swapping.
 
 Initial release of DualWriter for use at work, I'm tired of copy/pasting!
 
-© [2024] Luis Meza
+© [2024] lmezar
