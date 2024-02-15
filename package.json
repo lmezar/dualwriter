@@ -3,7 +3,7 @@
   "displayName": "DualWriter",
   "description": "Extension that allows you to modify two identical directories at the same time.",
   "version": "1.0.0",
-  "publisher": "Luis Meza",
+  "publisher": "lmezar",
   "icon": "icon.png",
   "repository": {
     "type": "git",
