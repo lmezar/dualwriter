@@ -43,6 +43,11 @@
           "type": "string",
           "default": "./",
           "description": "Secondary directory where the extension will update files."
+        },
+        "dualwriter.bidirectionalSync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable bidirectional sync between main and secondary directories."
         }
       }
     },
