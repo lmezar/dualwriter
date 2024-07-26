@@ -10,13 +10,14 @@ function activate(context: vscode.ExtensionContext) {
     let mainDirectory = configuration.get('mainDirectory', './');
     let secondaryDirectory = configuration.get('secondaryDirectory', './');
     let enableAutoSave = configuration.get('enableAutoSave', false);
+    let enableBidirectionalSync = configuration.get('bidirectionalSync', false);
 
     const syncFilesOnCommand = vscode.commands.registerCommand(`${extName}.syncFiles`, () => {
         const activeTextEditor = vscode.window.activeTextEditor;
         if (activeTextEditor) {
             const document = activeTextEditor.document;
             if (document && vscode.workspace.getWorkspaceFolder(document.uri)) {
-                syncFiles(document.uri.fsPath, mainDirectory, secondaryDirectory);
+                sync(document.uri.fsPath, mainDirectory, secondaryDirectory, enableBidirectionalSync);
             }
         }
     });
@@ -24,22 +25,33 @@ function activate(context: vscode.ExtensionContext) {
     const listenerConfiguration = vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration(`${extName}.enableAutoSave`) ||
             event.affectsConfiguration(`${extName}.mainDirectory`) ||
-            event.affectsConfiguration(`${extName}.secondaryDirectory`)) {
+            event.affectsConfiguration(`${extName}.secondaryDirectory`) ||
+            event.affectsConfiguration(`${extName}.bidirectionalSync`)
+        ) {
             enableAutoSave = configuration.get('enableAutoSave', false);
             mainDirectory = configuration.get('mainDirectory', './');
             secondaryDirectory = configuration.get('secondaryDirectory', './');
+            enableBidirectionalSync = configuration.get('bidirectionalSync', false);
         }
     });
 
     const syncFilesOnSave = vscode.workspace.onDidSaveTextDocument(async (document) => {
         if (enableAutoSave && vscode.workspace.getWorkspaceFolder(document.uri)) {
-            await syncFiles(document.uri.fsPath, mainDirectory, secondaryDirectory);
+            await sync(document.uri.fsPath, mainDirectory, secondaryDirectory, enableBidirectionalSync);
         }
     });
 
     context.subscriptions.push(syncFilesOnCommand);
     context.subscriptions.push(listenerConfiguration);
     context.subscriptions.push(syncFilesOnSave);
+}
+
+async function sync(filePath: string, mainDirectory: string, secondaryDirectory: string, bidirectionalSync: boolean){
+    await syncFiles(filePath, mainDirectory, secondaryDirectory);
+
+    if(bidirectionalSync) {
+        await syncFiles(filePath, secondaryDirectory, mainDirectory);
+    }
 }
 
 async function syncFiles(filePath: string, sourcePath: string, targetPath: string) {

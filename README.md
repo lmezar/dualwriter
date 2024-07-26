@@ -13,6 +13,7 @@ Before using it, make sure you set it up! No hot-swapping.
 * `dualwriter.enableAutoSave`: Enable/disable the autosave feature.
 * `dualwriter.mainDirectory`: The main directory where you will write your changes.
 * `dualwriter.secondaryDirectory`: The secondary directory where the extension will write for you.
+* `dualwriter.bidirectionalSync`: Enable/disable bidirectional sync between main and secondary directories.
 
 ## How to use
 
