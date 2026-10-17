@@ -1,6 +1,10 @@
 engineStrict: true
 strictPeerDependencies: true
 
+allowBuilds:
+  '@vscode/vsce-sign': true
+  esbuild: true
+
 # Mocha 11 still requests vulnerable versions of these test-only dependencies.
 overrides:
   'mocha@11>diff': '^8.0.3'

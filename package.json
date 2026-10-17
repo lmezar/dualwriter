@@ -65,12 +65,17 @@
   },
   "scripts": {
     "preinstall": "node -e \"if (!process.env.npm_config_user_agent?.startsWith('pnpm/')) { console.error('Use pnpm to install dependencies.'); process.exit(1); }\"",
-    "vscode:prepublish": "pnpm run compile",
+    "vscode:prepublish": "pnpm run compile && pnpm run bundle",
     "compile": "tsc -p ./",
+    "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node18 --external:vscode --outfile=out/extension.js",
     "watch": "tsc --watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package"
+  },
+  "vsce": {
+    "dependencies": false
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.10.0",
@@ -83,6 +88,8 @@
     "@typescript-eslint/parser": "^8.71.2",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.13.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },

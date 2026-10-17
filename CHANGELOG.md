@@ -6,6 +6,7 @@
 - Migrated development tooling to pnpm with its own lockfile.
 - Updated the compiler to TypeScript 7 and migrated ESLint to flat configuration.
 - Updated dependencies, including security fixes for test tooling.
+- Bundled runtime dependencies for packaging and publishing with pnpm.
 
 ## [1.1.0] - 2024-07-26
 
