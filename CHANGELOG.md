@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.1.1] - 2026-10-17
+
+### Changed
+- Migrated development tooling to pnpm with its own lockfile.
+- Updated the compiler to TypeScript 7 and migrated ESLint to flat configuration.
+- Updated dependencies, including security fixes for test tooling.
+
 ## [1.1.0] - 2024-07-26
 
 ### Added

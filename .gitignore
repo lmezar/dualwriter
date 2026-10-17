@@ -1,5 +1,10 @@
 out
 dist
 node_modules
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
+bun.lock
+bun.lockb
 .vscode-test/
 *.vsix
