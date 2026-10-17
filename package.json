@@ -1,8 +1,8 @@
 {
   "name": "dualwriter",
   "displayName": "DualWriter",
-  "description": "Extension that allows you to modify two identical directories at the same time.",
-  "version": "1.1.1",
+  "description": "Sync files between multiple independent pairs of directories.",
+  "version": "2.0.0",
   "packageManager": "pnpm@12.14.0",
   "publisher": "lmezar",
   "icon": "icon.png",
@@ -27,30 +27,57 @@
       {
         "command": "dualwriter.syncFiles",
         "title": "Sync Files"
+      },
+      {
+        "command": "dualwriter.syncDirectories",
+        "title": "Sync Entire Directory (Main → Copy)",
+        "category": "DualWriter"
       }
     ],
     "configuration": {
-      "title": "Save",
+      "title": "DualWriter",
       "properties": {
         "dualwriter.enableAutoSave": {
           "type": "boolean",
           "default": false,
+          "scope": "window",
           "description": "Enable automatic sync when saving files."
         },
-        "dualwriter.mainDirectory": {
-          "type": "string",
-          "default": "./",
-          "description": "Source directory where the user is going to edit the document."
-        },
-        "dualwriter.secondaryDirectory": {
-          "type": "string",
-          "default": "./",
-          "description": "Secondary directory where the extension will update files."
-        },
-        "dualwriter.bidirectionalSync": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable bidirectional sync between main and secondary directories."
+        "dualwriter.groups": {
+          "type": "array",
+          "default": [],
+          "scope": "window",
+          "description": "Independent directory pairs. Relative paths use the workspace folder, or the saved .code-workspace file's directory in multi-root workspaces. Directories must not overlap, including through symbolic links.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mainDirectory", "secondaryDirectory"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S",
+                "description": "Optional group name shown in sync messages."
+              },
+              "mainDirectory": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S",
+                "description": "Main directory containing files to sync."
+              },
+              "secondaryDirectory": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S",
+                "description": "Destination directory belonging exclusively to this group."
+              },
+              "bidirectionalSync": {
+                "type": "boolean",
+                "default": false,
+                "description": "Also sync from this group's secondary directory to its main directory."
+              }
+            }
+          }
         }
       }
     },
