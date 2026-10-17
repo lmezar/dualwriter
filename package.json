@@ -2,7 +2,8 @@
   "name": "dualwriter",
   "displayName": "DualWriter",
   "description": "Extension that allows you to modify two identical directories at the same time.",
-  "version": "1.1.0",
+  "version": "1.1.1",
+  "packageManager": "pnpm@12.14.0",
   "publisher": "lmezar",
   "icon": "icon.png",
   "repository": {
@@ -10,7 +11,9 @@
     "url": "https://github.com/lmezar/dualwriter.git"
   },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.85.0",
+    "node": "^22.13.0 || >=24.0.0",
+    "pnpm": "^12.14.0"
   },
   "categories": [
     "Other"
@@ -61,26 +64,29 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "preinstall": "node -e \"if (!process.env.npm_config_user_agent?.startsWith('pnpm/')) { console.error('Use pnpm to install dependencies.'); process.exit(1); }\"",
+    "vscode:prepublish": "pnpm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
+    "watch": "tsc --watch -p ./",
+    "pretest": "pnpm run compile && pnpm run lint",
+    "lint": "eslint src",
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/fs-extra": "^11.0.4",
-    "@types/mocha": "^10.0.6",
-    "@types/node": "18.x",
-    "@types/vscode": "^1.85.0",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.8",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3"
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^18.19.130",
+    "@types/vscode": "1.85.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.71.2",
+    "@typescript-eslint/parser": "^8.71.2",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "eslint": "^10.13.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "dependencies": {
-    "fs-extra": "^11.2.0"
+    "fs-extra": "^11.4.1"
   }
 }

@@ -1,0 +1,7 @@
+engineStrict: true
+strictPeerDependencies: true
+
+# Mocha 11 still requests vulnerable versions of these test-only dependencies.
+overrides:
+  'mocha@11>diff': '^8.0.3'
+  'mocha@11>serialize-javascript': '^7.1.2'

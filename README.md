@@ -32,4 +32,12 @@ Before using it, make sure you set it up! No hot-swapping.
 
 Initial release of DualWriter for use at work, I'm tired of copy/pasting!
 
+### 1.1.0
+
+Bidirectional sync added
+
+### 1.1.1
+
+Update dependencies
+
 © [2024] lmezar
