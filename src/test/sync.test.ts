@@ -91,15 +91,15 @@ suite('Isolated file synchronization', () => {
     test('reports missing source files and invalid directory paths', async () => {
         await assert.rejects(syncFile(path.join(groups[0].mainDirectory, 'missing.txt'), groups), { code: 'ENOENT' });
         await write(groups[0].secondaryDirectory, 'not a directory');
-        await assert.rejects(validateGroupPaths(groups), /no es un directorio/);
+        await assert.rejects(validateGroupPaths(groups), /is not a directory/);
     });
 
     test('rejects root aliases, including aliases with nonexistent descendants', async () => {
         await fs.mkdir(groups[0].mainDirectory);
         await fs.symlink(groups[0].mainDirectory, groups[1].secondaryDirectory, 'junction');
-        await assert.rejects(validateGroupPaths(groups), /solapan/);
+        await assert.rejects(validateGroupPaths(groups), /overlap/);
         groups[1].secondaryDirectory = path.join(groups[1].secondaryDirectory, 'not-created');
-        await assert.rejects(validateGroupPaths(groups), /solapan/);
+        await assert.rejects(validateGroupPaths(groups), /overlap/);
     });
 
     test('does not follow a source link into another group', async () => {
@@ -107,7 +107,7 @@ suite('Isolated file synchronization', () => {
         await fs.mkdir(groups[0].mainDirectory);
         const link = path.join(groups[0].mainDirectory, 'linked');
         await fs.symlink(groups[1].mainDirectory, link, 'junction');
-        await assert.rejects(syncFile(path.join(link, 'file.txt'), groups), /enlace simbólico/);
+        await assert.rejects(syncFile(path.join(link, 'file.txt'), groups), /symbolic link/);
         await assert.rejects(fs.stat(groups[0].secondaryDirectory), { code: 'ENOENT' });
         await assert.rejects(fs.stat(groups[1].secondaryDirectory), { code: 'ENOENT' });
     });
@@ -118,7 +118,7 @@ suite('Isolated file synchronization', () => {
         await write(path.join(groups[1].mainDirectory, 'file.txt'), 'protected');
         await fs.mkdir(groups[0].secondaryDirectory);
         await fs.symlink(groups[1].mainDirectory, path.join(groups[0].secondaryDirectory, 'linked'), 'junction');
-        await assert.rejects(syncFile(filePath, groups), /enlace simbólico/);
+        await assert.rejects(syncFile(filePath, groups), /symbolic link/);
         assert.strictEqual(await fs.readFile(path.join(groups[1].mainDirectory, 'file.txt'), 'utf8'), 'protected');
     });
 
@@ -129,7 +129,7 @@ suite('Isolated file synchronization', () => {
         await fs.mkdir(groups[0].secondaryDirectory);
         await fs.mkdir(groups[1].mainDirectory);
         await fs.symlink(outsideFile, path.join(groups[0].secondaryDirectory, 'file.txt'), 'file');
-        await assert.rejects(syncFile(filePath, groups), /enlace simbólico/);
+        await assert.rejects(syncFile(filePath, groups), /symbolic link/);
         await assert.rejects(fs.stat(outsideFile), { code: 'ENOENT' });
     });
 
@@ -138,7 +138,7 @@ suite('Isolated file synchronization', () => {
         await write(filePath, 'selected');
         await validateGroupPaths(groups);
         await fs.symlink(groups[0].mainDirectory, groups[1].secondaryDirectory, 'junction');
-        await assert.rejects(syncFile(filePath, groups), /solapan/);
+        await assert.rejects(syncFile(filePath, groups), /overlap/);
         await assert.rejects(fs.stat(groups[0].secondaryDirectory), { code: 'ENOENT' });
     });
 });

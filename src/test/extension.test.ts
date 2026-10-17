@@ -15,7 +15,11 @@ suite('Extension Test Suite', () => {
     let openSettingsOnError: boolean;
     let selectedGroup: number | undefined;
     let confirmReplacement: boolean;
-    let warnings: { message: string; options: vscode.MessageOptions | undefined }[];
+    let warnings: { message: string; options: vscode.MessageOptions | undefined; actions: string[] }[];
+    let pickerOptions: vscode.QuickPickOptions | undefined;
+    let progressOptions: vscode.ProgressOptions[];
+    let progressMessages: string[];
+    let statusMessages: string[];
     let pickerCount: number;
     let progressCount: number;
     let beforeProgress: (() => Promise<void>) | undefined;
@@ -28,6 +32,7 @@ suite('Extension Test Suite', () => {
     const showWarningMessage = vscode.window.showWarningMessage;
     const showQuickPick = vscode.window.showQuickPick;
     const withProgress = vscode.window.withProgress;
+    const setStatusBarMessage = vscode.window.setStatusBarMessage;
 
     async function waitFor(condition: () => boolean | Promise<boolean>): Promise<void> {
         const deadline = Date.now() + 5000;
@@ -118,6 +123,10 @@ suite('Extension Test Suite', () => {
         selectedGroup = undefined;
         confirmReplacement = false;
         warnings = [];
+        pickerOptions = undefined;
+        progressOptions = [];
+        progressMessages = [];
+        statusMessages = [];
         pickerCount = 0;
         progressCount = 0;
         beforeProgress = undefined;
@@ -132,22 +141,32 @@ suite('Extension Test Suite', () => {
             information.push(message);
             return Promise.resolve(undefined);
         }) as typeof vscode.window.showInformationMessage;
-        vscode.window.showQuickPick = ((items: readonly vscode.QuickPickItem[]) => {
+        vscode.window.showQuickPick = ((items: readonly vscode.QuickPickItem[], options?: vscode.QuickPickOptions) => {
             pickerCount++;
+            pickerOptions = options;
             return Promise.resolve(selectedGroup === undefined ? undefined : items[selectedGroup]);
         }) as unknown as typeof vscode.window.showQuickPick;
         vscode.window.showWarningMessage = (async (message: string, options?: vscode.MessageOptions, ...actions: string[]) => {
-            warnings.push({ message, options });
+            warnings.push({ message, options, actions });
             await beforeConfirmation?.();
             return confirmReplacement ? actions[0] : undefined;
         }) as unknown as typeof vscode.window.showWarningMessage;
-        vscode.window.withProgress = (async (_options: vscode.ProgressOptions, task: (
+        vscode.window.withProgress = (async (options: vscode.ProgressOptions, task: (
             progress: vscode.Progress<{ message?: string }>, token: vscode.CancellationToken
         ) => Thenable<unknown>) => {
             progressCount++;
+            progressOptions.push(options);
             await beforeProgress?.();
-            return task({ report: () => undefined }, cancellation.token);
+            return task({ report: ({ message }) => {
+                if (message) {
+                    progressMessages.push(message);
+                }
+            } }, cancellation.token);
         }) as typeof vscode.window.withProgress;
+        vscode.window.setStatusBarMessage = ((message: string) => {
+            statusMessages.push(message);
+            return { dispose: () => undefined };
+        }) as typeof vscode.window.setStatusBarMessage;
         directory = await fs.mkdtemp(path.join(workspaceDirectory, 'case-'));
         externalDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'dualwriter-external-'));
         await configure({});
@@ -168,6 +187,7 @@ suite('Extension Test Suite', () => {
         vscode.window.showWarningMessage = showWarningMessage;
         vscode.window.showQuickPick = showQuickPick;
         vscode.window.withProgress = withProgress;
+        vscode.window.setStatusBarMessage = setStatusBarMessage;
         cancellation.dispose();
         await fs.rm(directory, { recursive: true, force: true });
         await fs.rm(externalDirectory, { recursive: true, force: true });
@@ -206,6 +226,8 @@ suite('Extension Test Suite', () => {
             }
         }
         assert.deepStrictEqual(errors, []);
+        assert.strictEqual(statusMessages[0], 'File synced (Group 1).');
+        assert.strictEqual(statusMessages[statusMessages.length - 1], 'File synced (Group 2).');
     });
 
     test('automatic sync respects each group direction and the global enable switch', async () => {
@@ -245,7 +267,7 @@ suite('Extension Test Suite', () => {
         const document = await edit(path.join(directory, 'main1', 'file.txt'), 'original');
         await command();
         assert.strictEqual(errors.length, 1);
-        assert.match(errors[0], /anterior ya no es compatible/);
+        assert.match(errors[0], /legacy configuration is no longer supported/);
         assert.match(errors[0], /dualwriter.bidirectionalSync/);
         await save(document, 'blocked');
         await command();
@@ -285,7 +307,7 @@ suite('Extension Test Suite', () => {
         await configure({ 'dualwriter.bidirectionalSync': false });
         await waitFor(() => vscode.window.activeTextEditor?.document.uri.fsPath === settingsPath);
         assert.strictEqual(errors.length, 1);
-        assert.deepStrictEqual(errorActions[0], ['Abrir configuración']);
+        assert.deepStrictEqual(errorActions[0], ['Open Settings']);
     });
 
     test('invalid configuration disables all groups and recovers without restarting', async () => {
@@ -308,7 +330,7 @@ suite('Extension Test Suite', () => {
         await configure({ 'dualwriter.groups': [configuredGroups[0], { ...configuredGroups[1], mainDirectory: configuredGroups[0].secondaryDirectory }] });
         await command();
         assert.strictEqual(errors.length, 2);
-        assert.match(errors[1], /solapan/);
+        assert.match(errors[1], /overlap/);
     });
 
     test('allows reverse synchronization from a configured directory outside the workspace', async () => {
@@ -331,7 +353,7 @@ suite('Extension Test Suite', () => {
         await command();
         assert.deepStrictEqual(errors, []);
         assert.strictEqual(information.length, 1);
-        assert.match(information[0], /configura dualwriter.groups/);
+        assert.match(information[0], /Configure dualwriter.groups/);
     });
 
     test('ignores files outside all groups', async () => {
@@ -362,10 +384,19 @@ suite('Extension Test Suite', () => {
         assert.strictEqual(await read(path.join(directory, 'main1', 'protected.txt')), 'main-one');
         assert.strictEqual(await read(path.join(directory, 'copy1', 'protected.txt')), 'copy-one');
         assert.strictEqual(warnings.length, 1);
+        assert.strictEqual(warnings[0].message, 'All contents of the destination directory for group "Group 2" will be replaced.');
         assert.strictEqual(warnings[0].options?.modal, true);
-        assert.ok(warnings[0].options?.detail?.includes(path.join(directory, 'main2')));
-        assert.ok(warnings[0].options?.detail?.includes(path.join(directory, 'copy2')));
+        assert.ok(warnings[0].options?.detail?.includes(`Source: ${path.join(directory, 'main2')}`));
+        assert.ok(warnings[0].options?.detail?.includes(`Destination: ${path.join(directory, 'copy2')}`));
+        assert.match(warnings[0].options?.detail ?? '', /Files that exist only in the destination will be deleted/);
+        assert.deepStrictEqual(warnings[0].actions, ['Replace Destination']);
+        assert.strictEqual(pickerOptions?.title, 'DualWriter: Sync Entire Directory');
+        assert.strictEqual(pickerOptions?.placeHolder, 'Choose the group whose destination you want to replace');
         assert.strictEqual(progressCount, 1);
+        assert.strictEqual(progressOptions[0].title, 'DualWriter: Group 2 (main → copy)');
+        assert.strictEqual(progressMessages[0], 'Preparing: .');
+        assert.strictEqual(progressMessages[progressMessages.length - 1], 'Replacing destination (this phase cannot be cancelled)…');
+        assert.deepStrictEqual(information, ['DualWriter: Directory synced (Group 2).']);
         assert.deepStrictEqual(errors, []);
     });
 
@@ -390,7 +421,7 @@ suite('Extension Test Suite', () => {
         selectedGroup = 0;
         confirmReplacement = true;
         await directoryCommand();
-        assert.match(warnings[0].options?.detail ?? '', /origen está vacío/);
+        assert.match(warnings[0].options?.detail ?? '', /WARNING: The source is empty. The destination will be emptied./);
         assert.deepStrictEqual(await fs.readdir(path.join(directory, 'copy1')), []);
         assert.deepStrictEqual(errors, []);
     });
@@ -401,18 +432,18 @@ suite('Extension Test Suite', () => {
         selectedGroup = 0;
         confirmReplacement = true;
         await directoryCommand();
-        assert.match(errors[0], /origen no existe/);
+        assert.match(errors[0], /source directory does not exist/);
         assert.strictEqual(warnings.length, 0);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'old.txt')), 'old');
     });
 
     test('full replacement also requires valid non-legacy configuration and configured groups', async () => {
         await directoryCommand();
-        assert.match(information[0], /configura dualwriter.groups/);
+        assert.match(information[0], /Configure dualwriter.groups/);
         await configure({ 'dualwriter.groups': groups(), 'dualwriter.bidirectionalSync': false });
         await directoryCommand();
         assert.strictEqual(errors.length, 1);
-        assert.match(errors[0], /anterior ya no es compatible/);
+        assert.match(errors[0], /legacy configuration is no longer supported/);
         assert.strictEqual(pickerCount, 0);
         assert.strictEqual(progressCount, 0);
     });
@@ -432,7 +463,7 @@ suite('Extension Test Suite', () => {
             await vscode.workspace.applyEdit(edit);
             await directoryCommand();
             assert.strictEqual(document.isDirty, true);
-            assert.match(errors[errors.length - 1], /cambios sin guardar/);
+            assert.match(errors[errors.length - 1], /unsaved changes/);
             await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
         }
         assert.strictEqual(warnings.length, 0);
@@ -451,7 +482,7 @@ suite('Extension Test Suite', () => {
         await directoryCommand();
         assert.strictEqual(await read(path.join(directory, 'copy1', 'old.txt')), 'old');
         assert.strictEqual(await read(path.join(directory, 'copy1', 'new.txt')), undefined);
-        assert.match(information[0], /cancelada/);
+        assert.strictEqual(information[0], 'DualWriter: Sync cancelled. The previous destination has been preserved.');
         assert.deepStrictEqual(errors, []);
     });
 
@@ -469,7 +500,7 @@ suite('Extension Test Suite', () => {
         selectedGroup = 0;
         confirmReplacement = true;
         await directoryCommand();
-        assert.match(errors[0], /cambios sin guardar/);
+        assert.match(errors[0], /unsaved changes/);
         assert.strictEqual(document.isDirty, true);
         assert.strictEqual(progressCount, 0);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'file.txt')), 'copy');
@@ -487,7 +518,7 @@ suite('Extension Test Suite', () => {
             await vscode.workspace.applyEdit(edit);
         };
         await directoryCommand();
-        assert.match(errors[0], /cambios sin guardar/);
+        assert.match(errors[0], /unsaved changes/);
         assert.strictEqual(document.isDirty, true);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'old.txt')), 'old');
         assert.strictEqual(await read(path.join(directory, 'copy1', 'file.txt')), undefined);
@@ -501,7 +532,7 @@ suite('Extension Test Suite', () => {
         confirmReplacement = true;
         beforeConfirmation = () => configure({ 'dualwriter.groups': groups(), 'dualwriter.enableAutoSave': true });
         await directoryCommand();
-        assert.match(errors[0], /configuración ha cambiado/);
+        assert.match(errors[0], /configuration has changed/);
         assert.strictEqual(progressCount, 0);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'old.txt')), 'old');
     });
@@ -514,7 +545,7 @@ suite('Extension Test Suite', () => {
         confirmReplacement = true;
         beforeProgress = () => configure({ 'dualwriter.groups': groups(), 'dualwriter.enableAutoSave': true });
         await directoryCommand();
-        assert.match(errors[0], /configuración ha cambiado/);
+        assert.match(errors[0], /configuration has changed/);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'old.txt')), 'old');
         assert.strictEqual(await read(path.join(directory, 'copy1', 'new.txt')), undefined);
     });
@@ -531,7 +562,7 @@ suite('Extension Test Suite', () => {
             assert.strictEqual(await read(path.join(directory, 'copy1', 'file.txt')), undefined);
         };
         await directoryCommand();
-        assert.match(errors[0], /guardado un archivo del grupo/);
+        assert.match(errors[0], /file in this group was saved/);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'old.txt')), 'old');
         assert.strictEqual(await read(path.join(directory, 'copy1', 'file.txt')), undefined);
         await command();
@@ -570,7 +601,7 @@ suite('Extension Test Suite', () => {
         confirmReplacement = true;
         beforeProgress = () => save(document, 'saved-copy');
         await directoryCommand();
-        assert.match(errors[0], /guardado un archivo del grupo/);
+        assert.match(errors[0], /file in this group was saved/);
         assert.strictEqual(await read(path.join(directory, 'main1', 'file.txt')), 'main');
         assert.strictEqual(await read(path.join(directory, 'copy1', 'file.txt')), 'saved-copy');
     });
@@ -585,7 +616,7 @@ suite('Extension Test Suite', () => {
         await directoryCommand();
         assert.strictEqual(progressCount, 1);
         assert.strictEqual(errors.length, 1);
-        assert.match(errors[0], /en curso/);
+        assert.match(errors[0], /already in progress/);
         assert.strictEqual(await read(path.join(directory, 'copy1', 'file.txt')), 'main');
     });
 

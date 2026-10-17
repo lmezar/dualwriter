@@ -64,7 +64,7 @@ suite('Synchronization coordination', () => {
     test('rejects overlapping full replacements but permits other groups', async () => {
         const finish = deferred();
         const first = coordinator.runDirectory(directories(), async () => finish.promise);
-        await assert.rejects(coordinator.runDirectory(directories(), async () => undefined), /en curso/);
+        await assert.rejects(coordinator.runDirectory(directories(), async () => undefined), /already in progress/);
         assert.strictEqual(await coordinator.runDirectory(directories(1), async () => 'other'), 'other');
         finish.resolve();
         await first;

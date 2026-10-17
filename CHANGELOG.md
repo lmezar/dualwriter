@@ -18,6 +18,9 @@
 - Per-group coordination that drains in-flight file copies and pauses new ones during replacement without blocking other groups.
 - Filesystem, coordination and extension-host tests for complete replacement, deletion, cancellation, recovery, group isolation and manual-only execution.
 
+### Changed
+- Translated all extension messages, validation errors, confirmations, progress text and default group names to English. Custom group names remain unchanged.
+
 ## [1.1.1] - 2026-10-17
 
 ### Changed

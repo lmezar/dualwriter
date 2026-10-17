@@ -88,7 +88,7 @@ export class SyncCoordinator {
 
     async runDirectory<T>(directories: readonly string[], operation: (activity: DirectoryActivity) => Promise<T>): Promise<T> {
         if (this.isPaused(directories)) {
-            throw new Error('Ya hay una sincronización completa en curso para este grupo.');
+            throw new Error('A full directory sync is already in progress for this group.');
         }
         const activity = { directories, changed: false };
         this.replacements.add(activity);

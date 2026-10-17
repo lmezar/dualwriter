@@ -12,7 +12,7 @@ suite('Group configuration', () => {
         assert.deepStrictEqual(configuration, {
             enableAutoSave: true,
             groups: [{
-                name: 'Grupo 1',
+                name: 'Group 1',
                 mainDirectory: path.join(baseDirectory, 'main'),
                 secondaryDirectory: path.join(baseDirectory, 'copy'),
                 bidirectionalSync: false
@@ -28,6 +28,27 @@ suite('Group configuration', () => {
         assert.strictEqual(groups[0].name, 'Library');
         assert.strictEqual(groups[0].bidirectionalSync, true);
         assert.strictEqual(groups[1].bidirectionalSync, false);
+        assert.strictEqual(groups[1].name, 'Group 2');
+    });
+
+    test('keeps custom group names exactly as configured instead of translating them', () => {
+        const name = 'Biblioteca compartida';
+        assert.strictEqual(parseConfiguration([{ ...pair, name }], false, baseDirectory).groups[0].name, name);
+    });
+
+    test('reports configuration validation errors in English', () => {
+        const cases = [
+            { groups: [pair], autoSave: 'true', message: 'dualwriter.enableAutoSave must be a boolean.' },
+            { groups: {}, autoSave: false, message: 'dualwriter.groups must be an array of groups.' },
+            { groups: [null], autoSave: false, message: 'dualwriter.groups[0] must be an object with mainDirectory and secondaryDirectory.' },
+            { groups: [{ ...pair, mainDirectory: '' }], autoSave: false, message: 'dualwriter.groups[0].mainDirectory must be a non-empty path.' },
+            { groups: [{ ...pair, name: '' }], autoSave: false, message: 'dualwriter.groups[0].name must be a non-empty name.' },
+            { groups: [{ ...pair, bidirectionalSync: 'true' }], autoSave: false, message: 'dualwriter.groups[0].bidirectionalSync must be a boolean.' },
+            { groups: [{ ...pair, unexpected: true }], autoSave: false, message: 'dualwriter.groups[0].unexpected is not a valid setting.' }
+        ];
+        for (const { groups, autoSave, message } of cases) {
+            assert.throws(() => parseConfiguration(groups, autoSave, baseDirectory), { message });
+        }
     });
 
     test('accepts an empty list as an unconfigured, inactive extension', () => {
@@ -43,7 +64,7 @@ suite('Group configuration', () => {
     });
 
     test('rejects relative paths without an unambiguous workspace base', () => {
-        assert.throws(() => parseConfiguration([pair], false), /ruta absoluta/);
+        assert.throws(() => parseConfiguration([pair], false), /absolute path/);
     });
 
     test('rejects malformed groups instead of silently ignoring them', () => {
@@ -58,13 +79,13 @@ suite('Group configuration', () => {
             assert.throws(() => parseConfiguration([{ ...pair, name: value }], false, baseDirectory));
         }
         assert.throws(() => parseConfiguration([{ ...pair, bidirectionalSync: 'true' }], false, baseDirectory));
-        assert.throws(() => parseConfiguration([{ ...pair, enableBidirectionalSync: true }], false, baseDirectory), /no es una opción válida/);
+        assert.throws(() => parseConfiguration([{ ...pair, enableBidirectionalSync: true }], false, baseDirectory), /is not a valid setting/);
         assert.throws(() => parseConfiguration([pair], 'true', baseDirectory), /enableAutoSave/);
     });
 
     test('rejects equal, normalized-equal and nested directories within a pair', () => {
         for (const secondaryDirectory of ['./main', './main/../main', './main/nested', '.']) {
-            assert.throws(() => parseConfiguration([{ ...pair, secondaryDirectory }], false, baseDirectory), /solapan/);
+            assert.throws(() => parseConfiguration([{ ...pair, secondaryDirectory }], false, baseDirectory), /overlap/);
         }
     });
 
@@ -73,11 +94,11 @@ suite('Group configuration', () => {
             assert.throws(() => parseConfiguration([
                 pair,
                 { mainDirectory: sharedDirectory, secondaryDirectory: './other-copy' }
-            ], false, baseDirectory), /solapan/);
+            ], false, baseDirectory), /overlap/);
             assert.throws(() => parseConfiguration([
                 pair,
                 { mainDirectory: './other-main', secondaryDirectory: sharedDirectory }
-            ], false, baseDirectory), /solapan/);
+            ], false, baseDirectory), /overlap/);
         }
     });
 

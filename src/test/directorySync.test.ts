@@ -104,7 +104,7 @@ suite('Complete directory replacement', () => {
 
     test('a missing source must never be treated as an empty source', async () => {
         await fs.rmdir(source);
-        await assert.rejects(inspectDirectorySync(groups, 0), /origen no existe/);
+        await assert.rejects(inspectDirectorySync(groups, 0), /source directory does not exist/);
         await assertOriginalDestination();
         await assertNoTemporaryDirectories();
     });
@@ -112,16 +112,16 @@ suite('Complete directory replacement', () => {
     test('rejects non-directory roots and invalid group indices before changing data', async () => {
         await fs.rmdir(source);
         await fs.writeFile(source, 'not a directory');
-        await assert.rejects(inspectDirectorySync(groups, 0), /no es un directorio/);
+        await assert.rejects(inspectDirectorySync(groups, 0), /is not a directory/);
         await assertOriginalDestination();
-        await assert.rejects(inspectDirectorySync(groups, -1), /grupo seleccionado/);
+        await assert.rejects(inspectDirectorySync(groups, -1), /selected group/);
     });
 
     test('rejects overlapping roots and disk-root destinations', async () => {
         groups[0].secondaryDirectory = source;
-        await assert.rejects(inspectDirectorySync(groups, 0), /solapan/);
+        await assert.rejects(inspectDirectorySync(groups, 0), /overlap/);
         groups[0].secondaryDirectory = path.parse(directory).root;
-        await assert.rejects(inspectDirectorySync(groups, 0), /solapan|raíz/);
+        await assert.rejects(inspectDirectorySync(groups, 0), /overlap|root/);
         await assertOriginalDestination();
     });
 
@@ -168,7 +168,7 @@ suite('Complete directory replacement', () => {
                 }
                 await fs.rename(from, to);
             }
-        }), /El respaldo se conserva en/);
+        }), /The backup has been preserved at/);
         const temporary = (await fs.readdir(directory)).find((name) => name.startsWith('.dualwriter-'));
         assert.ok(temporary);
         assert.strictEqual(await fs.readFile(path.join(directory, temporary, 'previous', 'old.txt'), 'utf8'), 'previous');
@@ -189,7 +189,7 @@ suite('Complete directory replacement', () => {
         await assert.rejects(replace({}, {
             copyFile: async () => { throw new Error('copy failed'); },
             remove: async () => { throw new Error('cleanup failed'); }
-        }), /copy failed.*No se pudo eliminar el temporal/);
+        }), /copy failed.*Could not remove temporary directory/);
         await assertOriginalDestination();
         assert.ok((await fs.readdir(directory)).some((name) => name.startsWith('.dualwriter-')));
     });
@@ -211,7 +211,7 @@ suite('Complete directory replacement', () => {
         let cancelled = false;
         await replace({
             isCancellationRequested: () => cancelled,
-            onProgress: (message) => { cancelled = message.startsWith('Reemplazando'); }
+            onProgress: (message) => { cancelled = message.startsWith('Replacing'); }
         });
         assert.strictEqual(await fs.readFile(path.join(target, 'file.txt'), 'utf8'), 'new');
         await assertNoTemporaryDirectories();
@@ -219,7 +219,7 @@ suite('Complete directory replacement', () => {
 
     test('rejects source links into another group without reading them into the destination', async () => {
         await fs.symlink(groups[1].mainDirectory, path.join(source, 'external'), 'junction');
-        await assert.rejects(replace(), /enlace simbólico sale del origen/);
+        await assert.rejects(replace(), /symbolic link points outside the source/);
         await assertOriginalDestination();
         await assertNoTemporaryDirectories();
     });
@@ -243,7 +243,7 @@ suite('Complete directory replacement', () => {
         await replace();
         assert.strictEqual(await fs.readlink(path.join(target, 'internal')), 'not-created.txt');
         await fs.symlink(path.join(groups[1].mainDirectory, 'not-created.txt'), path.join(source, 'external'), 'file');
-        await assert.rejects(replace(), /enlace simbólico sale del origen/);
+        await assert.rejects(replace(), /symbolic link points outside the source/);
         assert.strictEqual(await fs.readlink(path.join(target, 'internal')), 'not-created.txt');
     });
 
@@ -278,7 +278,7 @@ suite('Complete directory replacement', () => {
         const plan = await inspectDirectorySync(groups, 0);
         await fs.rename(target, path.join(directory, 'moved-destination'));
         await write(path.join(target, 'unconfirmed.txt'), 'protected');
-        await assert.rejects(syncDirectory(plan), /han cambiado desde la confirmación/);
+        await assert.rejects(syncDirectory(plan), /has changed since confirmation/);
         assert.strictEqual(await fs.readFile(path.join(target, 'unconfirmed.txt'), 'utf8'), 'protected');
         await assertNoTemporaryDirectories();
     });
@@ -289,7 +289,7 @@ suite('Complete directory replacement', () => {
         const plan = await inspectDirectorySync(groups, 0);
         await fs.unlink(groups[0].secondaryDirectory);
         await fs.symlink(groups[1].mainDirectory, groups[0].secondaryDirectory, 'junction');
-        await assert.rejects(syncDirectory(plan), /solapan/);
+        await assert.rejects(syncDirectory(plan), /overlap/);
         await assertOriginalDestination();
         assert.strictEqual(await fs.readFile(path.join(groups[1].mainDirectory, 'protected.txt'), 'utf8'), 'other-main');
     });
@@ -300,7 +300,7 @@ suite('Complete directory replacement', () => {
         await assert.rejects(replace({ beforeCommit: async () => {
             await fs.unlink(groups[0].secondaryDirectory);
             await fs.symlink(groups[1].mainDirectory, groups[0].secondaryDirectory, 'junction');
-        } }), /solapan/);
+        } }), /overlap/);
         await assertOriginalDestination();
         assert.strictEqual(await fs.readFile(path.join(groups[1].mainDirectory, 'protected.txt'), 'utf8'), 'other-main');
         await assertNoTemporaryDirectories();
@@ -313,7 +313,7 @@ suite('Complete directory replacement', () => {
                 await fs.copyFile(from, to);
                 await fs.appendFile(from, '-changed');
             }
-        }), /origen cambió durante la copia/);
+        }), /source changed during copying/);
         await assertOriginalDestination();
         await assertNoTemporaryDirectories();
     });
@@ -328,7 +328,7 @@ suite('Complete directory replacement', () => {
     test('source changes during asynchronous pre-publication guards are still detected', async () => {
         const filePath = path.join(source, 'file.txt');
         await write(filePath, 'new');
-        await assert.rejects(replace({ beforeCommit: () => fs.appendFile(filePath, '-changed') }), /origen cambió durante la copia/);
+        await assert.rejects(replace({ beforeCommit: () => fs.appendFile(filePath, '-changed') }), /source changed during copying/);
         await assertOriginalDestination();
         await assertNoTemporaryDirectories();
     });

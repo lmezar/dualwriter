@@ -35,7 +35,7 @@ export async function canonicalPath(filePath: string): Promise<string> {
 async function resolveGroupDirectory(directory: string): Promise<string> {
     try {
         if (!(await fs.stat(directory)).isDirectory()) {
-            throw new Error(`La ruta configurada no es un directorio: ${directory}`);
+            throw new Error(`The configured path is not a directory: ${directory}`);
         }
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -75,7 +75,7 @@ export async function syncFile(filePath: string, groups: readonly SyncGroup[]): 
         return undefined;
     }
     if (matches.length > 1) {
-        throw new Error('El archivo pertenece a varios grupos. Revisa dualwriter.groups.');
+        throw new Error('The file belongs to multiple groups. Check dualwriter.groups.');
     }
     const match = matches[0];
     const group = groups[match.index];
@@ -94,7 +94,7 @@ export async function syncFile(filePath: string, groups: readonly SyncGroup[]): 
     const targetFile = await canonicalPath(targetPath);
 
     if (!containsPath(sourceDirectory, sourceFile) || !containsPath(targetDirectory, targetFile)) {
-        throw new Error(`Un enlace simbólico hace que el archivo salga del grupo "${group.name}". No se ha copiado.`);
+        throw new Error(`A symbolic link causes the file to leave group "${group.name}". No file was copied.`);
     }
 
     await fs.mkdir(path.dirname(targetFile), { recursive: true });

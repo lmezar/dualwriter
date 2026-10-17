@@ -15,7 +15,7 @@ without restarting VS Code.
 
 * `dualwriter.enableAutoSave`: Copy files when saving. Defaults to `false` and applies to all groups.
 * `dualwriter.groups`: Independent directory pairs. Defaults to `[]` (no synchronization).
-  * `name`: Optional label used in messages.
+  * `name`: Optional label used in messages. Defaults to `Group 1`, `Group 2`, etc. when omitted.
   * `mainDirectory`: Required main directory.
   * `secondaryDirectory`: Required destination for this group only.
   * `bidirectionalSync`: Also copy from this group's secondary directory to its main directory. Defaults to `false`.
@@ -67,6 +67,8 @@ applies when valid new groups are present. Correcting the settings re-enables
 synchronization without restarting; the error is not repeated on every save.
 
 ## How to use
+
+All extension messages are in English. Custom group names are displayed as configured.
 
 - **Visual command name**: Sync Files
 - **Shortcut:** Windows: Ctrl+Alt+F | Mac: CMD+Alt+F

@@ -6,7 +6,7 @@ import { DirectorySyncCancelled, DirectorySyncPlan, inspectDirectorySync, syncDi
 import { SyncCoordinator } from './syncCoordinator';
 
 const extName = 'dualwriter';
-const openSettingsLabel = 'Abrir configuración';
+const openSettingsLabel = 'Open Settings';
 type SettingsLocation = 'user' | 'workspace' | vscode.Uri;
 
 function workspaceDirectory(): string | undefined {
@@ -40,7 +40,7 @@ function offerConfiguration(message: string, location: SettingsLocation, error: 
             await openConfiguration(location);
         }
     }).then(undefined, (reason: unknown) => {
-        void vscode.window.showErrorMessage(`DualWriter: no se pudo abrir la configuración: ${errorMessage(reason)}`);
+        void vscode.window.showErrorMessage(`DualWriter: Could not open settings: ${errorMessage(reason)}`);
     });
 }
 
@@ -65,7 +65,7 @@ async function assertDocumentsSaved(plan: DirectorySyncPlan): Promise<void> {
             }
         }
         if (related) {
-            throw new Error(`Hay cambios sin guardar en ${document.uri.fsPath}. Guarda o descarta los cambios del origen y del destino antes de sincronizar el directorio.`);
+            throw new Error(`There are unsaved changes in ${document.uri.fsPath}. Save or discard changes in the source and destination before syncing the directory.`);
         }
     }
 }
@@ -101,7 +101,7 @@ function activate(context: vscode.ExtensionContext) {
                         break;
                     }
                 }
-                throw new Error(`La configuración anterior ya no es compatible. Configura dualwriter.groups y elimina estas opciones de los ajustes de usuario, workspace y carpeta: ${configuredLegacySettings.map((key) => `${extName}.${key}`).join(', ')}. La sincronización está desactivada.`);
+                throw new Error(`The legacy configuration is no longer supported. Configure dualwriter.groups and remove these settings from user, workspace, and folder settings: ${configuredLegacySettings.map((key) => `${extName}.${key}`).join(', ')}. Sync is disabled.`);
             }
 
             if (settings.inspect('groups')?.workspaceValue === undefined && settings.inspect('groups')?.globalValue !== undefined) {
@@ -136,7 +136,7 @@ function activate(context: vscode.ExtensionContext) {
         }
         if (current.groups.length === 0) {
             if (!automatic) {
-                offerConfiguration('DualWriter: configura dualwriter.groups para empezar a sincronizar archivos.',
+                offerConfiguration('DualWriter: Configure dualwriter.groups to start syncing files.',
                     vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user', false);
             }
             return;
@@ -149,10 +149,10 @@ function activate(context: vscode.ExtensionContext) {
         try {
             const result = await coordinator.runFile(group, () => syncFile(document.uri.fsPath, current.groups));
             if (result) {
-                vscode.window.setStatusBarMessage(`Archivo sincronizado (${result.groupName}).`, 5000);
+                vscode.window.setStatusBarMessage(`File synced (${result.groupName}).`, 5000);
             }
         } catch (error) {
-            void vscode.window.showErrorMessage(`DualWriter: error al sincronizar archivos: ${errorMessage(error)}`);
+            void vscode.window.showErrorMessage(`DualWriter: Could not sync files: ${errorMessage(error)}`);
         }
     }
 
@@ -164,14 +164,14 @@ function activate(context: vscode.ExtensionContext) {
             return;
         }
         if (current.groups.length === 0) {
-            offerConfiguration('DualWriter: configura dualwriter.groups para empezar a sincronizar directorios.',
+            offerConfiguration('DualWriter: Configure dualwriter.groups to start syncing directories.',
                 vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user', false);
             return;
         }
 
         function assertConfigurationUnchanged(): void {
             if (currentRevision !== revision || current !== configuration) {
-                throw new Error('La configuración ha cambiado. Vuelve a ejecutar el comando y confirma las rutas actuales.');
+                throw new Error('The configuration has changed. Run the command again and confirm the current paths.');
             }
         }
 
@@ -181,7 +181,7 @@ function activate(context: vscode.ExtensionContext) {
                 description: 'main → copy',
                 detail: `${group.mainDirectory} → ${group.secondaryDirectory}`,
                 index
-            })), { title: 'DualWriter: sincronizar directorio completo', placeHolder: 'Elige el grupo cuyo destino quieres reemplazar' });
+            })), { title: 'DualWriter: Sync Entire Directory', placeHolder: 'Choose the group whose destination you want to replace' });
             if (!selected) {
                 return;
             }
@@ -189,14 +189,14 @@ function activate(context: vscode.ExtensionContext) {
             const plan = await inspectDirectorySync(current.groups, selected.index);
             await assertDocumentsSaved(plan);
             const confirmation = await vscode.window.showWarningMessage(
-                `Se reemplazará todo el contenido del destino del grupo "${selected.label}".`,
+                `All contents of the destination directory for group "${selected.label}" will be replaced.`,
                 {
                     modal: true,
-                    detail: `Origen: ${plan.sourceDirectory}\nDestino: ${plan.targetDirectory}\n\nSe eliminarán los archivos exclusivos del destino y se copiará TODO el origen, incluidos archivos ocultos. No se modificará el origen.${plan.empty ? '\n\nATENCIÓN: el origen está vacío. El destino quedará vacío.' : ''}`
+                    detail: `Source: ${plan.sourceDirectory}\nDestination: ${plan.targetDirectory}\n\nFiles that exist only in the destination will be deleted, and the ENTIRE source will be copied, including hidden files. The source will not be modified.${plan.empty ? '\n\nWARNING: The source is empty. The destination will be emptied.' : ''}`
                 },
-                'Reemplazar destino'
+                'Replace Destination'
             );
-            if (confirmation !== 'Reemplazar destino') {
+            if (confirmation !== 'Replace Destination') {
                 return;
             }
             assertConfigurationUnchanged();
@@ -208,15 +208,15 @@ function activate(context: vscode.ExtensionContext) {
                     function assertState(requireResolvedSaves = false): void {
                         assertConfigurationUnchanged();
                         if (activity.changed) {
-                            throw new Error('Se ha guardado un archivo del grupo durante la preparación. Vuelve a ejecutar el comando; el destino no se ha reemplazado.');
+                            throw new Error('A file in this group was saved during preparation. Run the command again; the destination has not been replaced.');
                         }
                         if (requireResolvedSaves && coordinator.hasPendingSaves(activity)) {
-                            throw new Error('Hay cambios guardados pendientes de comprobar. Vuelve a ejecutar el comando; el destino no se ha reemplazado.');
+                            throw new Error('Saved changes are still being checked. Run the command again; the destination has not been replaced.');
                         }
                         const dirty = vscode.workspace.textDocuments.find((document) => document.isDirty &&
                             document.uri.scheme === 'file' && activity.directories.some((directory) => containsPath(directory, document.uri.fsPath)));
                         if (dirty) {
-                            throw new Error(`Hay cambios sin guardar en ${dirty.uri.fsPath}. Guarda o descarta los cambios antes de sincronizar el directorio.`);
+                            throw new Error(`There are unsaved changes in ${dirty.uri.fsPath}. Save or discard changes before syncing the directory.`);
                         }
                     }
                     async function assertReady(): Promise<void> {
@@ -243,15 +243,15 @@ function activate(context: vscode.ExtensionContext) {
                 }
             );
             if (result.retainedPath) {
-                void vscode.window.showWarningMessage(`DualWriter: directorio sincronizado, pero no se pudo eliminar el respaldo o temporal: ${result.retainedPath}`);
+                void vscode.window.showWarningMessage(`DualWriter: Directory synced, but the backup or temporary directory could not be removed: ${result.retainedPath}`);
             } else {
-                void vscode.window.showInformationMessage(`DualWriter: directorio sincronizado (${result.groupName}).`);
+                void vscode.window.showInformationMessage(`DualWriter: Directory synced (${result.groupName}).`);
             }
         } catch (error) {
             if (error instanceof DirectorySyncCancelled) {
                 void vscode.window.showInformationMessage(`DualWriter: ${error.message}`);
             } else {
-                void vscode.window.showErrorMessage(`DualWriter: error al sincronizar el directorio: ${errorMessage(error)}`);
+                void vscode.window.showErrorMessage(`DualWriter: Could not sync directory: ${errorMessage(error)}`);
             }
         }
     }
@@ -282,7 +282,7 @@ function activate(context: vscode.ExtensionContext) {
 }
 
 function deactivate() {
-    // Este método se llama cuando la extensión se desactiva.
+    // Called when the extension is deactivated.
 }
 
 export { activate, deactivate };

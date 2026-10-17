@@ -44,7 +44,7 @@ export function assertSeparateDirectories(groups: readonly SyncGroup[]): void {
         for (const other of directories.slice(index + 1)) {
             const current = directories[index];
             if (containsPath(current.directory, other.directory) || containsPath(other.directory, current.directory)) {
-                throw new Error(`Los directorios de "${current.name}" y "${other.name}" coinciden o se solapan: ${current.directory} / ${other.directory}. Cada directorio debe pertenecer exclusivamente a una pareja sin directorios anidados.`);
+                throw new Error(`Directories in "${current.name}" and "${other.name}" are identical or overlap: ${current.directory} / ${other.directory}. Each directory must belong exclusively to one pair, with no nested directories.`);
             }
         }
     }
@@ -52,42 +52,42 @@ export function assertSeparateDirectories(groups: readonly SyncGroup[]): void {
 
 function resolveDirectory(value: unknown, setting: string, baseDirectory: string | undefined): string {
     if (typeof value !== 'string' || value.trim() === '' || value.includes('\0')) {
-        throw new Error(`${setting} debe ser una ruta no vacía.`);
+        throw new Error(`${setting} must be a non-empty path.`);
     }
     if (!path.isAbsolute(value) && !baseDirectory) {
-        throw new Error(`${setting} debe ser una ruta absoluta cuando no hay una carpeta de workspace o un archivo .code-workspace guardado.`);
+        throw new Error(`${setting} must be an absolute path when no workspace folder or saved .code-workspace file is available.`);
     }
     return path.resolve(baseDirectory ?? '', value);
 }
 
 export function parseConfiguration(rawGroups: unknown, enableAutoSave: unknown, baseDirectory?: string): SyncConfiguration {
     if (typeof enableAutoSave !== 'boolean') {
-        throw new Error('dualwriter.enableAutoSave debe ser un booleano.');
+        throw new Error('dualwriter.enableAutoSave must be a boolean.');
     }
     if (!Array.isArray(rawGroups)) {
-        throw new Error('dualwriter.groups debe ser una lista de grupos.');
+        throw new Error('dualwriter.groups must be an array of groups.');
     }
 
     const groups = rawGroups.map((value: unknown, index): SyncGroup => {
         const setting = `dualwriter.groups[${index}]`;
         if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-            throw new Error(`${setting} debe ser un objeto con mainDirectory y secondaryDirectory.`);
+            throw new Error(`${setting} must be an object with mainDirectory and secondaryDirectory.`);
         }
         const group = value as Record<string, unknown>;
         const allowedKeys = ['name', 'mainDirectory', 'secondaryDirectory', 'bidirectionalSync'];
         const unknownKey = Object.keys(group).find((key) => !allowedKeys.includes(key));
         if (unknownKey) {
-            throw new Error(`${setting}.${unknownKey} no es una opción válida.`);
+            throw new Error(`${setting}.${unknownKey} is not a valid setting.`);
         }
         if (group.name !== undefined && (typeof group.name !== 'string' || group.name.trim() === '')) {
-            throw new Error(`${setting}.name debe ser un nombre no vacío.`);
+            throw new Error(`${setting}.name must be a non-empty name.`);
         }
         if (group.bidirectionalSync !== undefined && typeof group.bidirectionalSync !== 'boolean') {
-            throw new Error(`${setting}.bidirectionalSync debe ser un booleano.`);
+            throw new Error(`${setting}.bidirectionalSync must be a boolean.`);
         }
 
         return {
-            name: typeof group.name === 'string' ? group.name : `Grupo ${index + 1}`,
+            name: typeof group.name === 'string' ? group.name : `Group ${index + 1}`,
             mainDirectory: resolveDirectory(group.mainDirectory, `${setting}.mainDirectory`, baseDirectory),
             secondaryDirectory: resolveDirectory(group.secondaryDirectory, `${setting}.secondaryDirectory`, baseDirectory),
             bidirectionalSync: group.bidirectionalSync === true

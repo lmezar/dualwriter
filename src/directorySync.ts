@@ -43,7 +43,7 @@ const defaultIO: DirectorySyncIO = {
 
 export class DirectorySyncCancelled extends Error {
     constructor() {
-        super('Sincronización cancelada. El destino anterior se ha conservado.');
+        super('Sync cancelled. The previous destination has been preserved.');
     }
 }
 
@@ -55,7 +55,7 @@ async function directorySignature(directory: string): Promise<string | undefined
     try {
         const stats = await fs.stat(directory);
         if (!stats.isDirectory()) {
-            throw new Error(`La ruta no es un directorio: ${directory}`);
+            throw new Error(`The path is not a directory: ${directory}`);
         }
         return signature(stats);
     } catch (error) {
@@ -68,17 +68,17 @@ async function directorySignature(directory: string): Promise<string | undefined
 
 export async function inspectDirectorySync(groups: readonly SyncGroup[], groupIndex: number): Promise<DirectorySyncPlan> {
     if (!groups[groupIndex]) {
-        throw new Error('El grupo seleccionado ya no existe.');
+        throw new Error('The selected group no longer exists.');
     }
     assertSeparateDirectories(groups);
     const resolvedGroups = await validateGroupPaths(groups);
     const { mainDirectory: sourceDirectory, secondaryDirectory: targetDirectory } = resolvedGroups[groupIndex];
     if (targetDirectory === path.parse(targetDirectory).root) {
-        throw new Error('No se puede reemplazar la raíz de un disco.');
+        throw new Error('The root of a filesystem cannot be replaced.');
     }
     const sourceSignature = await directorySignature(sourceDirectory);
     if (sourceSignature === undefined) {
-        throw new Error(`El directorio origen no existe: ${sourceDirectory}. No se ha modificado el destino.`);
+        throw new Error(`The source directory does not exist: ${sourceDirectory}. The destination has not been modified.`);
     }
     return {
         groups: groups.map((group) => ({ ...group })),
@@ -95,7 +95,7 @@ async function assertPlanUnchanged(plan: DirectorySyncPlan): Promise<void> {
     const current = await inspectDirectorySync(plan.groups, plan.groupIndex);
     if (current.sourceDirectory !== plan.sourceDirectory || current.targetDirectory !== plan.targetDirectory ||
         current.sourceSignature !== plan.sourceSignature || current.targetSignature !== plan.targetSignature) {
-        throw new Error('El origen o el destino han cambiado desde la confirmación. Vuelve a ejecutar el comando.');
+        throw new Error('The source or destination has changed since confirmation. Run the command again.');
     }
 }
 
@@ -132,7 +132,7 @@ export async function syncDirectory(
         const target = path.join(staged, relativePath);
         const stats = await fs.lstat(source);
         sourceEntries.set(source, signature(stats));
-        options.onProgress?.(`Preparando: ${relativePath || '.'}`);
+        options.onProgress?.(`Preparing: ${relativePath || '.'}`);
 
         if (stats.isDirectory()) {
             await fs.mkdir(target);
@@ -145,7 +145,7 @@ export async function syncDirectory(
         } else if (stats.isSymbolicLink()) {
             const resolved = await canonicalPath(source);
             if (!containsPath(plan.sourceDirectory, resolved)) {
-                throw new Error(`El enlace simbólico sale del origen: ${source}. No se ha modificado el destino.`);
+                throw new Error(`The symbolic link points outside the source: ${source}. The destination has not been modified.`);
             }
             const destination = path.join(plan.targetDirectory, path.relative(plan.sourceDirectory, resolved));
             let directoryLink = false;
@@ -161,7 +161,7 @@ export async function syncDirectory(
                 : path.relative(path.dirname(path.join(plan.targetDirectory, relativePath)), destination) || '.';
             await fs.symlink(linkTarget, target, directoryLink ? 'junction' : 'file');
         } else {
-            throw new Error(`Tipo de archivo no compatible con la copia completa: ${source}`);
+            throw new Error(`Unsupported file type for full directory sync: ${source}`);
         }
     }
 
@@ -173,7 +173,7 @@ export async function syncDirectory(
         for (const [source, expected] of sourceEntries) {
             checkCancellation();
             if (signature(await fs.lstat(source)) !== expected) {
-                throw new Error(`El origen cambió durante la copia: ${source}. Vuelve a ejecutar el comando.`);
+                throw new Error(`The source changed during copying: ${source}. Run the command again.`);
             }
         }
         await assertPlanUnchanged(plan);
@@ -181,7 +181,7 @@ export async function syncDirectory(
         // A synchronous final guard catches saves/configuration changes that
         // arrived while the asynchronous filesystem checks were running.
         options.assertCanCommit?.();
-        options.onProgress?.('Reemplazando destino (esta fase no se puede cancelar)…');
+        options.onProgress?.('Replacing destination (this phase cannot be cancelled)…');
 
         // No cancellation once replacement starts: always finish publication or
         // restore the previous directory before releasing the group's lock.
@@ -198,7 +198,7 @@ export async function syncDirectory(
                     backupMoved = false;
                 } catch (restoreError) {
                     keepTemporary = true;
-                    throw new Error(`No se pudo reemplazar ni restaurar el destino. El respaldo se conserva en ${backup}. Error de copia: ${String(publishError)}. Error de restauración: ${String(restoreError)}`);
+                    throw new Error(`Could not replace or restore the destination. The backup has been preserved at ${backup}. Copy error: ${String(publishError)}. Restore error: ${String(restoreError)}`);
                 }
             }
             throw publishError;
@@ -217,7 +217,7 @@ export async function syncDirectory(
             // recovery container, not a child that might no longer exist.
             retainedPath = temporary;
             if (!committed) {
-                failure = new Error(`${String(failure)}. No se pudo eliminar el temporal ${temporary}: ${String(cleanupError)}`);
+                failure = new Error(`${String(failure)}. Could not remove temporary directory ${temporary}: ${String(cleanupError)}`);
             }
         }
     }
