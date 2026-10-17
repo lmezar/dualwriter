@@ -4,7 +4,7 @@ import { assertSeparateDirectories, containsPath, SyncGroup } from './configurat
 
 // Resolve existing ancestors too, so a destination need not exist yet and
 // symbolic links cannot disguise shared or nested group directories.
-async function canonicalPath(filePath: string): Promise<string> {
+export async function canonicalPath(filePath: string): Promise<string> {
     try {
         return await fs.realpath(filePath);
     } catch (error) {

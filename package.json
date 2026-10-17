@@ -27,6 +27,11 @@
       {
         "command": "dualwriter.syncFiles",
         "title": "Sync Files"
+      },
+      {
+        "command": "dualwriter.syncDirectories",
+        "title": "Sync Entire Directory (Main → Copy)",
+        "category": "DualWriter"
       }
     ],
     "configuration": {
